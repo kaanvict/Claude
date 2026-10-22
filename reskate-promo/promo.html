@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ReSkate Promo</title>
+<style>
+  :root { --bg:#FF5A1F; --ink:#111; --panel:#141414; --pink:#F2F0EC; --mute:#8A8884; --line:#2C2B29; --go:#3DDC84; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1200px; height:675px; background:var(--bg); }
+  .card { position:relative; width:1200px; height:675px; padding:60px 64px; color:var(--ink);
+          font-family:"Inter Display","Inter",sans-serif; display:flex; gap:56px; }
+  .left { flex:1; display:flex; flex-direction:column; }
+  .brand { font-weight:700; font-size:22px; letter-spacing:-.01em; }
+  h1 { margin-top:auto; font-weight:700; font-size:104px; line-height:.92; letter-spacing:-.045em; }
+  p { margin-top:26px; font-size:24px; line-height:1.35; font-weight:500; max-width:560px; }
+  .url { margin-top:30px; font-family:"JetBrains Mono",monospace; font-size:18px; font-weight:500; }
+  .panel { width:380px; align-self:center; background:var(--panel); color:var(--pink); border-radius:18px; padding:26px 26px 22px;
+           font-family:"Inter",sans-serif; box-shadow:0 30px 60px rgba(0,0,0,.25); }
+  .hd { display:flex; justify-content:space-between; font-family:"JetBrains Mono",monospace; font-size:14px; letter-spacing:.06em; color:var(--mute); text-transform:uppercase; }
+  .row { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); font-size:20px; font-weight:500; }
+  .row:last-of-type { border-bottom:none; }
+  .av { width:36px; height:36px; border-radius:50%; background:#FF5A1F; flex:none; }
+  .open .av { background:none; border:2px dashed #4A4946; }
+  .open { color:#6E6C68; }
+  .mic { margin-left:auto; display:flex; gap:3px; align-items:flex-end; height:18px; }
+  .mic i { width:4px; background:var(--go); border-radius:2px; }
+  .ft { margin-top:14px; font-family:"JetBrains Mono",monospace; font-size:14px; color:var(--mute); letter-spacing:.04em; }
+</style></head>
+<body><div class="card">
+  <div class="left">
+    <div class="brand">ReSkate</div>
+    <h1>Bring your friends.<br>All 31 of them.</h1>
+    <p>Host your own skate. lobby. Friends join with a code, and you can hear them when they're close by.</p>
+    <div class="url">reskate.app</div>
+  </div>
+  <div class="panel">
+    <div class="hd"><span>Your lobby</span><span>4 / 32</span></div>
+    <div class="row"><span class="av"></span>you<span class="mic"><i style="height:8px"></i><i style="height:16px"></i><i style="height:11px"></i></span></div>
+    <div class="row"><span class="av" style="background:#F2F0EC"></span>joined</div>
+    <div class="row"><span class="av" style="background:#7BA7FF"></span>joined</div>
+    <div class="row"><span class="av" style="background:#FFD24A"></span>joined</div>
+    <div class="row open"><span class="av"></span>+ invite</div>
+    <div class="ft">+ 27 more open</div>
+  </div>
+</div></body></html>

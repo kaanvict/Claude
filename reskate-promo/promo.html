@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ReSkate Lobby Card</title>
+<style>
+  :root { --bg:#121212; --ink:#F2F0EC; --mute:#7C7A76; --line:#3A3936; --accent:#FF5A1F; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1200px; height:675px; background:var(--bg); }
+  .card { position:relative; width:1200px; height:675px; padding:64px 72px; color:var(--ink);
+          font-family:"Inter Display","Inter",sans-serif; }
+  .mono { font-family:"JetBrains Mono",monospace; font-size:15px; letter-spacing:.08em; color:var(--mute); text-transform:uppercase; }
+  h1 { margin-top:72px; font-weight:600; font-size:168px; line-height:.9; letter-spacing:-.045em; }
+  .slots { margin-top:56px; display:grid; grid-template-columns:repeat(16, 1fr); gap:10px; width:1056px; }
+  .slots i { display:block; height:14px; border-radius:3px; border:1.5px solid var(--line); }
+  .slots i.on { background:var(--accent); border-color:var(--accent); }
+  .foot { position:absolute; left:72px; right:72px; bottom:56px; display:flex; justify-content:space-between; align-items:flex-end; }
+  .code { display:flex; gap:8px; align-items:flex-end; }
+  .code b { display:block; width:26px; height:34px; border-bottom:2px solid var(--mute); }
+</style></head>
+<body><div class="card">
+  <div class="mono">Lobby — skate.</div>
+  <h1>31 open.</h1>
+  <div class="slots" id="s"></div>
+  <div class="foot">
+    <div class="mono">ReSkate&nbsp;&nbsp;·&nbsp;&nbsp;32 players&nbsp;&nbsp;·&nbsp;&nbsp;join by code&nbsp;&nbsp;·&nbsp;&nbsp;proximity voice</div>
+    <div class="code"><span class="mono" style="margin-right:10px">Code</span><b></b><b></b><b></b><b></b><b></b><b></b></div>
+  </div>
+</div>
+<script>
+  const s = document.getElementById('s');
+  for (let i = 0; i < 32; i++) { const e = document.createElement('i'); if (i === 0) e.className = 'on'; s.appendChild(e); }
+</script>
+</body></html>

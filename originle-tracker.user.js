@@ -1,7 +1,9 @@
 // ==UserScript==
 // @name         Originle Tracker
 // @namespace    https://github.com/kaanvict/claude
-// @version      1.1
+// @version      1.2
+// @updateURL    https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-tracker.user.js
+// @downloadURL  https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-tracker.user.js
 // @description  Records your Originle daily results and shows them in a pull-out panel on the site.
 // @match        https://originle.io/*
 // @match        https://www.originle.io/*

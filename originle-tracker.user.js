@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Originle Tracker
 // @namespace    https://github.com/kaanvict/claude
-// @version      1.0
+// @version      1.1
 // @description  Records your Originle daily results and shows them in a pull-out panel on the site.
 // @match        https://originle.io/*
 // @match        https://www.originle.io/*
@@ -48,6 +48,40 @@
     }
     if (changed) GM_setValue(STORE, history);
     return changed;
+  }
+
+  // The answer country is only in each guest's day.js, so fetch it, but only for puzzles you have finished.
+  const tried = new Set();
+  async function fillAnswers() {
+    const missing = Object.values(GM_getValue(STORE, {})).filter(e => !e.answer && !tried.has(e.id));
+    for (const e of missing) {
+      tried.add(e.id);
+      let answer = null;
+      try {
+        const day = unsafeWindow.ORIGINLE_DAY, here = unsafeWindow.ORIGINLE_DAILY;
+        if (day && here && here.id === e.id && day.country) answer = day.country;
+        else {
+          const text = await (await fetch(`/${e.id}/day.js`)).text();
+          answer = (text.match(/"country"\s*:\s*"([^"]+)"/) || [])[1] || null;
+        }
+      } catch { /* retry on next page load */ }
+      if (!answer) continue;
+      const history = GM_getValue(STORE, {});
+      if (history[e.id]) { history[e.id].answer = answer; GM_setValue(STORE, history); }
+    }
+  }
+
+  // Add the answer to finished rows on the Archive page (unfinished rows are left alone: no spoilers).
+  function decorateArchive() {
+    const history = GM_getValue(STORE, {});
+    for (const link of document.querySelectorAll('ol.daily-archive li a')) {
+      const entry = history[new URL(link.href).pathname.split('/')[1]];
+      const status = link.querySelector('.archive-status');
+      if (entry && entry.answer && status && !status.dataset.answer) {
+        status.dataset.answer = '1';
+        status.textContent += ' · ' + entry.answer;
+      }
+    }
   }
 
   function stats(entries) {
@@ -113,7 +147,7 @@
       const name = e.id.charAt(0).toUpperCase() + e.id.slice(1);
       row.append(
         el('span', '', e.n ? '#' + String(e.n).padStart(3, '0') : '#?'),
-        el('span', '', `${name}${e.date ? ' · ' + e.date : ''}`),
+        el('span', '', `${name}${e.answer ? ' → ' + e.answer : ''}${e.date ? ' · ' + e.date : ''}`),
         el('span', 'score', e.score === null ? '–' : e.score.toLocaleString()),
         el('span', 'sub', `${e.marks} · ${e.hints}/8 clues · ${e.correct ? 'solved' : e.gaveUp ? 'gave up' : 'missed'} · ${e.countries.join(', ')}`)
       );
@@ -131,7 +165,12 @@
   };
 
   document.documentElement.append(host);
-  const refresh = () => { if (scan() && !panel.hidden) render(); };
+  const refresh = () => {
+    const changed = scan();
+    fillAnswers().then(() => { if (!panel.hidden) render(); decorateArchive(); });
+    if (changed && !panel.hidden) render();
+    decorateArchive();
+  };
   refresh();
   setInterval(refresh, 2000);
   window.addEventListener('storage', refresh);

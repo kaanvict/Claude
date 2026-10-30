@@ -4,11 +4,14 @@
 Sources (nothing here is hand-written):
   - Unicode CLDR (pinned version below): which languages each country speaks, the share of the population,
     and official status (territoryInfo.json); ISO 639-1 -> 639-3 codes (aliases.json, "overlong" entries).
+  - Glottolog CLDF (pinned version below): one map point per language (ISO 639-3 match, language level only).
   - originle.io's own game script (hush/hush.js): the list of guessable countries and the names its world map uses,
     so the companion map matches the game's map exactly.
 
 Usage: python3 tools/build_companion_data.py
 """
+import csv
+import io
 import json
 import re
 import urllib.request
@@ -16,6 +19,8 @@ from pathlib import Path
 
 CLDR = '49.0.0'
 BASE = f'https://raw.githubusercontent.com/unicode-org/cldr-json/{CLDR}/cldr-json/cldr-core/supplemental/'
+GLOTTOLOG = 'v5.3'
+GLOTTOLOG_CSV = f'https://raw.githubusercontent.com/glottolog/glottolog-cldf/{GLOTTOLOG}/cldf/languages.csv'
 GAME = 'https://originle.io/hush/hush.js'
 SCRIPT = Path(__file__).resolve().parent.parent / 'originle-companion.user.js'
 STATUS = {'official': 'o', 'de_facto_official': 'o', 'official_regional': 'r'}
@@ -54,7 +59,19 @@ def main():
     iso3 = {v['_replacement']: k for k, v in aliases.items()
             if v.get('_reason') == 'overlong' and len(k) == 3 and len(v['_replacement']) == 2}
 
-    data = {'cldr': CLDR, 'codes': codes, 'fixed': fixed, 'featureAliases': feature_aliases,
+    # Glottolog point for each CLDR language (by ISO 639-3), so the map can show where in a country it is spoken
+    glotto = {}
+    for row in csv.DictReader(io.StringIO(get(GLOTTOLOG_CSV))):
+        if row['Level'] == 'language' and row['ISO639P3code'] and row['Latitude']:
+            glotto[row['ISO639P3code']] = [round(float(row['Latitude']), 3), round(float(row['Longitude']), 3), row['Glottocode'], row['Name']]
+    points = {}
+    for lang in {lang for rows in langs.values() for lang, _, _ in rows}:
+        base = lang.split('_')[0]
+        code3 = base if len(base) == 3 else iso3.get(base)
+        if code3 in glotto:
+            points[lang] = glotto[code3]
+
+    data = {'cldr': CLDR, 'glottolog': GLOTTOLOG, 'points': points, 'codes': codes, 'fixed': fixed, 'featureAliases': feature_aliases,
             'langs': langs, 'iso3': iso3}
     line = 'const DATA = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';'
     src = SCRIPT.read_text(encoding='utf-8')
@@ -62,7 +79,7 @@ def main():
     if n != 1:
         raise SystemExit('DATA line not found in ' + str(SCRIPT))
     SCRIPT.write_text(src, encoding='utf-8')
-    print(f'{len(codes)} countries, {sum(map(len, langs.values()))} language rows, {len(iso3)} ISO 639-3 codes')
+    print(f'{len(codes)} countries, {sum(map(len, langs.values()))} language rows, {len(iso3)} ISO 639-3 codes, {len(points)} Glottolog points')
 
 
 if __name__ == '__main__':

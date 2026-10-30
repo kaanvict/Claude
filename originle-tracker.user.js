@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Originle Tracker
 // @namespace    https://github.com/kaanvict/claude
-// @version      1.3
+// @version      1.4
 // @updateURL    https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-tracker.user.js
 // @downloadURL  https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-tracker.user.js
 // @description  Records your Originle daily results. Retired: steps aside and hands its history to Originle Companion once that is installed.
@@ -180,10 +180,13 @@
   // Retirement: Originle Companion replaces this script. Hand it this history (Tampermonkey keeps each
   // script's storage separate), and once the Companion is running on the page, remove this panel.
   try { localStorage.setItem('originle-companion:import', JSON.stringify(GM_getValue(STORE, {}))); } catch { /* storage blocked */ }
-  setTimeout(() => {
+  let checks = 0;
+  const retire = setInterval(() => { // look for the Companion for up to 30 seconds after the page loads
+    if (++checks > 30) { clearInterval(retire); return; }
     if (document.documentElement.dataset.originleCompanion !== '1') return;
+    clearInterval(retire);
     clearInterval(timer);
     window.removeEventListener('storage', refresh);
     host.remove();
-  }, 1500);
+  }, 1000);
 })();

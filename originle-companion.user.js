@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Originle Companion
 // @namespace    https://github.com/kaanvict/claude
-// @version      1.1
+// @version      1.2
 // @updateURL    https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-companion.user.js
 // @downloadURL  https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-companion.user.js
 // @description  Tracker, language map, deduction board and listening tools for Originle. Each feature has its own on/off switch in the Tampermonkey menu.
@@ -556,6 +556,66 @@ const DATA = {"cldr":"49.0.0","glottolog":"v5.3","points":{"vls":[51.075,3.113,"
     const video = document.getElementById('guest-video');
     if (freeze && video && !video.paused && freeze.getAttribute('aria-pressed') !== 'true') freeze.click();
   }
+  // Wikitongues videos on Wikimedia Commons, filed by language in "Category:Wikitongues videos in <Language>".
+  // Titles name the speaker and language ("WIKITONGUES- Sai speaking Tamil"), so each clip carries its own label.
+  const clipCache = {};
+  async function commonsClips(code) {
+    const base = code.split('_')[0];
+    const names = [...new Set([langName(code), langName(base), DATA.points[code] && DATA.points[code][3], DATA.points[base] && DATA.points[base][3]].filter(Boolean))];
+    for (const name of names) {
+      const url = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({
+        action: 'query', format: 'json', origin: '*', generator: 'categorymembers', gcmtitle: `Category:Wikitongues videos in ${name}`,
+        gcmtype: 'file', gcmlimit: '20', prop: 'imageinfo|videoinfo', iiprop: 'url|mime|extmetadata', iiextmetadatafilter: 'LicenseShortName', viprop: 'derivatives'
+      });
+      const data = await (await fetch(url)).json();
+      const pages = Object.values((data.query && data.query.pages) || {});
+      if (!pages.length) continue;
+      return {category: name, clips: pages.map(p => {
+        const info = (p.imageinfo || [])[0] || {};
+        const derivatives = ((p.videoinfo || [])[0] || {}).derivatives || [];
+        // a mid-size transcode streams faster than the original upload
+        const pick = derivatives.filter(d => /webm|mp4/.test(d.type) && d.height && d.height <= 480).sort((a, b) => b.height - a.height)[0];
+        return {
+          title: p.title.replace(/^File:/, '').replace(/\.(webm|ogv|mp4)$/i, '').replace(/^WIKITONGUES-?\s*/i, ''),
+          src: pick ? pick.src : info.url,
+          page: info.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(p.title)}`,
+          license: ((info.extmetadata || {}).LicenseShortName || {}).value || ''
+        };
+      }).filter(c => c.src).sort((a, b) => a.title.localeCompare(b.title))};
+    }
+    return {category: names.join(' or '), clips: []};
+  }
+  function showClips(code, box) {
+    box.replaceChildren(el('b', '', 'Clips: native speakers (Wikitongues, via Wikimedia Commons)'), el('p', 'muted', 'Loading…'));
+    (clipCache[code] = clipCache[code] || commonsClips(code)).then(({category, clips}) => {
+      if (listenView.lang !== code) return;
+      box.replaceChildren(el('b', '', 'Clips: native speakers (Wikitongues, via Wikimedia Commons)'));
+      if (!clips.length) { box.append(el('p', 'muted', `Commons has no Wikitongues category for ${category}. Try the links below.`)); return; }
+      const list = el('div', 'list');
+      for (const clip of clips) {
+        const row = el('div');
+        row.style.flexDirection = 'column';
+        row.style.alignItems = 'stretch';
+        const top = el('div', 'row');
+        const play = button('▶ Play', '', () => {
+          for (const v of box.querySelectorAll('video')) v.remove(); // one clip at a time
+          const video = el('video', '', null, {controls: '', autoplay: '', src: clip.src});
+          video.style.width = '100%';
+          video.style.borderRadius = '8px';
+          video.addEventListener('play', pauseGuest);
+          row.append(video);
+        });
+        const source = el('a', 'muted', clip.license ? `Commons · ${clip.license}` : 'Commons', {href: clip.page, target: '_blank', rel: 'noopener'});
+        top.append(play, el('span', 'grow', clip.title), source);
+        row.append(top);
+        list.append(row);
+      }
+      box.append(list);
+    }).catch(() => {
+      delete clipCache[code];
+      if (listenView.lang === code) box.replaceChildren(el('b', '', 'Clips'), el('p', 'muted', 'Couldn’t reach Wikimedia Commons right now. Pick the language again to retry, or use the links below.'));
+    });
+  }
   function buildListen(panel) {
     const head = el('div', 'head');
     head.append(el('h3', '', 'Listen'), el('span', 'muted', 'L'));
@@ -588,7 +648,9 @@ const DATA = {"cldr":"49.0.0","glottolog":"v5.3","points":{"vls":[51.075,3.113,"
       if (iso3) link('Native speakers: Wikitongues', `Videos of people speaking ${baseName}, labelled by the speakers themselves.`, `https://wikitongues.org/languages/${iso3}/`);
       link('English with this accent: Speech Accent Archive', `The same English paragraph read by native ${baseName} speakers. Some languages have no samples.`,
         `https://accent.gmu.edu/browse_language.php?function=find&language=${encodeURIComponent(baseName.toLowerCase())}`);
-      body.append(links, el('p', 'muted', 'Opens in a separate window on your Mac and pauses the guest. A tab cast won’t show that window; cast your whole screen if you want it on the TV.'));
+      const clips = el('div', 'group');
+      body.append(clips, links, el('p', 'muted', 'These links open in a separate window on your Mac and pause the guest. A tab cast won’t show that window; the clips above play right here, so they do show on the TV.'));
+      showClips(code, clips);
       const where = BY_LANG[code] || [];
       if (where.length) {
         const box = el('div', 'group');

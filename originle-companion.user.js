@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Originle Companion
 // @namespace    https://github.com/kaanvict/claude
-// @version      1.3.1
+// @version      1.3.2
 // @updateURL    https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-companion.user.js
 // @downloadURL  https://raw.githubusercontent.com/kaanvict/Claude/claude/happy-mayer-inem0z/originle-companion.user.js
 // @description  Tracker, language map, deduction board and listening tools for Originle. Each feature has its own on/off switch in the Tampermonkey menu.
@@ -142,6 +142,13 @@ const DATA = {"cldr":"49.0.0","glottolog":"v5.3","points":{"vls":[51.075,3.113,"
     .list .grow { flex: 1; }
     .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
     .chips button { border-radius: 999px; padding: 2px 10px; }
+    .chip { display: inline-flex; border: 1px solid #0002; border-radius: 999px; background: #fff; overflow: hidden; }
+    .chip button { border: 0; border-radius: 0; background: none; }
+    .chip .x { padding: 2px 8px 2px 4px; color: #6a6f70; }
+    .chip .x:hover { color: #262a2b; }
+    .chip.on { background: #262a2b; border-color: #262a2b; }
+    .chip.on button { color: #fff; }
+    .chips .clear { border: 0; background: none; color: #6a6f70; text-decoration: underline; }
     .links a { display: block; background: #fff; border: 1px solid #0002; border-radius: 8px; padding: 8px 10px; margin: 6px 0; color: inherit; text-decoration: none; }
     .links a:hover { border-color: #0006; }
     .map { width: 100%; height: 52vh; background: #fff; border-radius: 10px; display: block; touch-action: none; }
@@ -652,13 +659,24 @@ const DATA = {"cldr":"49.0.0","glottolog":"v5.3","points":{"vls":[51.075,3.113,"
     panel.append(head, controls, recent, body);
 
     listenView.render = function render() {
-      const recents = GM_getValue('recentLangs', []);
-      if (listenView.lang && recents[0] !== listenView.lang) {
-        GM_setValue('recentLangs', [listenView.lang, ...recents.filter(c => c !== listenView.lang)].slice(0, 8));
-      }
-      recent.replaceChildren(...GM_getValue('recentLangs', []).map(c => button(langName(c), c === listenView.lang ? 'on' : '', () => { listenView.lang = c; render(); })));
+      // Recent picks belong to this puzzle, so each new guest starts with a clean row; order stays put as you flip.
+      const recentKey = 'recentLangs:' + puzzle;
+      let recents = GM_getValue(recentKey, []);
+      if (listenView.lang && !recents.includes(listenView.lang)) GM_setValue(recentKey, recents = [...recents, listenView.lang].slice(-8));
+      const chips = recents.map(c => {
+        const chip = el('span', 'chip' + (c === listenView.lang ? ' on' : ''));
+        chip.append(button(langName(c), '', () => { listenView.lang = c; render(); }),
+          button('×', 'x', () => {
+            GM_setValue(recentKey, GM_getValue(recentKey, []).filter(x => x !== c));
+            if (listenView.lang === c) listenView.lang = null;
+            render();
+          }, `Remove ${langName(c)}`));
+        return chip;
+      });
+      if (recents.length > 1) chips.push(button('Clear all', 'clear', () => { GM_setValue(recentKey, []); listenView.lang = null; render(); }));
+      recent.replaceChildren(...chips);
       body.replaceChildren();
-      if (!listenView.lang) { body.append(el('p', 'muted', 'Pick a language to get recordings of it. Recent picks stay above for quick back-and-forth.')); return; }
+      if (!listenView.lang) { body.append(el('p', 'muted', 'Pick a language to get recordings of it. Your picks for this puzzle stay above for quick back-and-forth; × removes one, and a new puzzle starts with none.')); return; }
       const code = listenView.lang, base = code.split('_')[0];
       const name = langName(code), baseName = langName(base);
       const iso3 = base.length === 3 ? base : DATA.iso3[base];
